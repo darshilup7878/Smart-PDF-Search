@@ -1,0 +1,5 @@
+{
+    "data_path": "data",
+    "persist_directory": "db",
+    "collection_name": "smart_pdf_search"
+}
