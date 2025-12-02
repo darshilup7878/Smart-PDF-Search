@@ -5,7 +5,8 @@ from dotenv import load_dotenv
 # Constants
 CONFIG_FILE = 'config.json'
 
-# Load environment variables from .env
+# Load environment variables from .env (for local development)
+# Note: For Streamlit Cloud, API keys should be loaded from st.secrets in app.py
 load_dotenv()
 
 def save_config(data_path, persist_directory, collection_name):
@@ -48,10 +49,11 @@ def load_config():
             if key not in config:
                 raise KeyError(f"Missing required configuration key: {key}")
 
-        # Add GROQ_API_KEY from environment variables (fallback to .env)
+        # Add GROQ_API_KEY from environment variables
+        # The key should be set in os.environ by app.py (from st.secrets or .env)
         config['groq_api_key'] = os.getenv('GROQ_API_KEY')
         if not config['groq_api_key']:
-            raise ValueError("GROQ_API_KEY is not set in environment variables.")
+            raise ValueError("GROQ_API_KEY is not set in environment variables. Please set it in Streamlit secrets or .env file.")
 
         return config
 

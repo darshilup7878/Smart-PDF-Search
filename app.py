@@ -50,21 +50,52 @@ def create_dirs_if_needed():
 # Call the function at the start of your app
 create_dirs_if_needed()
 
-try: 
-    # Load environment variables
-    load_dotenv()
-except:
-    # Load keys from Streamlit Secrets
-    GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
-    # Make available to SDKs expecting env var
-    os.environ["GROQ_API_KEY"] = GROQ_API_KEY
-
 # Must be the first Streamlit command
 st.set_page_config(
     page_title="Smart PDF Search",
     page_icon="📚",
     layout="wide"
 )
+
+# Load GROQ_API_KEY: Check st.secrets first (for Streamlit Cloud), then .env (for local)
+GROQ_API_KEY = None
+
+# Check if we're in Streamlit Cloud or if secrets file exists
+# Streamlit Cloud typically has these indicators
+is_streamlit_cloud = (
+    os.environ.get("STREAMLIT_SHARING_MODE") is not None or
+    os.path.exists("/app/.streamlit/secrets.toml")
+)
+
+# Check if local secrets file exists (to avoid warning message)
+secrets_paths = [
+    os.path.expanduser("~/.streamlit/secrets.toml"),
+    os.path.join(os.getcwd(), ".streamlit", "secrets.toml")
+]
+local_secrets_exists = any(os.path.exists(path) for path in secrets_paths)
+
+# Try to get from Streamlit secrets first (only if in Streamlit Cloud or secrets file exists)
+# This prevents the warning message when running locally without secrets file
+if is_streamlit_cloud or local_secrets_exists:
+    try:
+        if hasattr(st, 'secrets'):
+            try:
+                GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
+                if GROQ_API_KEY:
+                    os.environ["GROQ_API_KEY"] = GROQ_API_KEY
+            except (KeyError, FileNotFoundError):
+                # st.secrets key doesn't exist, will try .env next
+                pass
+    except (AttributeError, TypeError):
+        # st.secrets might not be available, will try .env next
+        pass
+
+# If not found in st.secrets, fallback to .env file (for local development)
+if not GROQ_API_KEY:
+    load_dotenv()
+    GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+    if not GROQ_API_KEY:
+        raise ValueError("GROQ_API_KEY not found. Please set it in Streamlit secrets (for cloud) or .env file (for local)")
 
 st.markdown("""
     <style>
