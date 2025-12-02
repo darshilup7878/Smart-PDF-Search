@@ -57,36 +57,45 @@ st.set_page_config(
     layout="wide"
 )
 
-# Load GROQ_API_KEY: use st.secrets on Streamlit Cloud, fall back to .env locally
+# Load GROQ_API_KEY: Streamlit Cloud (st.secrets) first, then .env for local dev
 def load_groq_api_key() -> str:
     """Return GROQ API key from Streamlit secrets (cloud) or .env (local)."""
-    secrets_locations = [
+    key = None
+
+    # 1. Streamlit Cloud / secrets.toml
+    secrets_paths = [
         os.path.expanduser("~/.streamlit/secrets.toml"),
         os.path.join(os.getcwd(), ".streamlit", "secrets.toml"),
     ]
-    secrets_file_exists = any(os.path.exists(path) for path in secrets_locations)
-    running_in_streamlit_cloud = os.path.exists("/app") or os.environ.get("STREAMLIT_SHARING_MODE")
+    secrets_file_exists = any(os.path.exists(path) for path in secrets_paths)
+    running_in_cloud = bool(os.environ.get("STREAMLIT_SHARING_MODE") or os.path.exists("/app"))
 
-    # Prefer Streamlit secrets when running in the cloud or when a local secrets file exists
-    if (running_in_streamlit_cloud or secrets_file_exists) and hasattr(st, "secrets"):
+    if (running_in_cloud or secrets_file_exists) and hasattr(st, "secrets"):
         try:
-            key = st.secrets["GROQ_API_KEY"].strip()
+            raw_key = st.secrets["GROQ_API_KEY"]
+            key = str(raw_key).strip().strip('"').strip("'")
             if key:
                 logger.info("GROQ_API_KEY loaded from st.secrets")
                 return key
-        except (KeyError, FileNotFoundError, AttributeError):
-            logger.debug("GROQ_API_KEY not found in st.secrets, trying .env instead")
+        except KeyError:
+            logger.debug("GROQ_API_KEY missing in st.secrets, trying .env")
+        except FileNotFoundError:
+            logger.debug("secrets.toml not found, trying .env")
+        except Exception as e:
+            logger.debug(f"st.secrets unavailable ({e}), falling back to .env")
 
-    # Local development fallback
+    # 2. Local .env fallback
     load_dotenv()
-    key = os.getenv("GROQ_API_KEY", "").strip()
+    key = os.getenv("GROQ_API_KEY", "").strip().strip('"').strip("'")
     if key:
-        logger.info("GROQ_API_KEY loaded from .env file")
+        logger.info("GROQ_API_KEY loaded from .env")
         return key
 
+    # 3. Error out with guidance
     error_msg = (
-        "GROQ_API_KEY not found. Please add it to Streamlit Cloud secrets "
-        "or define it in a local .env file."
+        "GROQ_API_KEY not found. Please either:\n"
+        "- Add GROQ_API_KEY to Streamlit Cloud secrets, or\n"
+        "- Create a local .env file containing GROQ_API_KEY=your_key"
     )
     logger.error(error_msg)
     raise ValueError(error_msg)
