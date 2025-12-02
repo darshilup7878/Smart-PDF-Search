@@ -50,8 +50,14 @@ def create_dirs_if_needed():
 # Call the function at the start of your app
 create_dirs_if_needed()
 
-# Load environment variables
-load_dotenv()
+try: 
+    # Load environment variables
+    load_dotenv()
+except:
+    # Load keys from Streamlit Secrets
+    GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
+    # Make available to SDKs expecting env var
+    os.environ["GROQ_API_KEY"] = GROQ_API_KEY
 
 # Must be the first Streamlit command
 st.set_page_config(
