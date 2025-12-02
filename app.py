@@ -76,8 +76,6 @@ def load_groq_api_key() -> str:
             key = str(raw_key).strip().strip('"').strip("'")
             if key:
                 logger.info("GROQ_API_KEY loaded from st.secrets")
-                print("#################", key)
-                logger.info(key)
                 return key
         except KeyError:
             logger.debug("GROQ_API_KEY missing in st.secrets, trying .env")
